@@ -103,7 +103,7 @@ def test_user_password_is_hashed(client, db):
 
 
 def test_get_users(client):
-    # Create a user first
+    # Register a user
     client.post(
         "/api/v1/users/",
         json={
@@ -113,14 +113,77 @@ def test_get_users(client):
         },
     )
 
-    # Retrieve all users
-    response = client.get("/api/v1/users/")
+    # Login to obtain an access token
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": "list@example.com",
+            "password": "SecurePassword123",
+        },
+    )
+
+    token = login_response.json()["access_token"]
+
+    # Retrieve users using the access token
+    response = client.get(
+        "/api/v1/users/",
+        headers={
+            "Authorization": f"Bearer {token}",
+        },
+    )
 
     assert response.status_code == 200
 
-    users = response.json()
+    data = response.json()
 
-    assert len(users) == 1
-    assert users[0]["email"] == "list@example.com"
-    assert "hashed_password" not in users[0]
-    assert "password" not in users[0]
+    assert len(data) == 1
+    assert data[0]["email"] == "list@example.com"
+    assert "password" not in data[0]
+    assert "hashed_password" not in data[0]
+
+
+def test_get_current_user_without_token(client):
+    response = client.get("/api/v1/users/me")
+
+    assert response.status_code == 401
+
+def test_get_current_user_with_token(client):
+    # Register a user
+    client.post(
+        "/api/v1/users/",
+        json={
+            "full_name": "Current User",
+            "email": "current@example.com",
+            "password": "SecurePassword123",
+        },
+    )
+
+    # Login
+    login_response = client.post(
+        "/api/v1/auth/login",
+        data={
+            "username": "current@example.com",
+            "password": "SecurePassword123",
+        },
+    )
+
+    token = login_response.json()["access_token"]
+
+    # Access the protected endpoint
+    response = client.get(
+        "/api/v1/users/me",
+        headers={
+            "Authorization": f"Bearer {token}",
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["full_name"] == "Current User"
+    assert data["email"] == "current@example.com"
+    assert data["is_active"] is True
+
+    assert "password" not in data
+    assert "hashed_password" not in data

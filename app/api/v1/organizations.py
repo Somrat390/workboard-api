@@ -9,7 +9,10 @@ from app.schemas.organization import (
     OrganizationCreate,
     OrganizationResponse,
 )
-from app.services.organization import create_organization
+from app.services.organization import (
+    create_organization,
+    get_user_organizations,
+)
 
 
 router = APIRouter(
@@ -35,3 +38,20 @@ def create_organization_endpoint(
     )
 
     return organization
+
+
+
+@router.get(
+    "/",
+    response_model=list[OrganizationResponse],
+)
+def list_organizations(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    organizations = get_user_organizations(
+        user_id=current_user.id,
+        db=db,
+    )
+
+    return organizations

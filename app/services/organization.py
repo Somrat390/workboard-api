@@ -1,7 +1,10 @@
 
 from sqlalchemy.orm import Session
 
-from app.models import Organization, OrganizationMembership
+from app.models import (
+    Organization,
+    OrganizationMembership,
+)
 from app.core.utils import generate_slug
 
 
@@ -60,3 +63,21 @@ def create_organization(
 
 
 
+
+def get_user_organizations(
+    user_id: int,
+    db: Session,
+) -> list[Organization]:
+    organizations = (
+        db.query(Organization)
+        .join(
+            OrganizationMembership,
+            OrganizationMembership.organization_id == Organization.id,
+        )
+        .filter(
+            OrganizationMembership.user_id == user_id
+        )
+        .all()
+    )
+
+    return organizations
